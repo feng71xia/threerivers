@@ -1,4 +1,4 @@
-package com.ibm.gbs.threerivers;
+package com.ibm.gbs.threerivers.kafka;
 
 import com.ibm.gbs.schema.Customer;
 import com.ibm.gbs.schema.CustomerBalance;
@@ -9,13 +9,15 @@ import org.apache.kafka.streams.*;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KTable;
 import org.apache.kafka.streams.kstream.Produced;
+import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 
 import static io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG;
 
-public class ThreeRiversDemo {
+@Service
+public class ThreeRiversDemoKTable {
 
     final String CUSTOMER_TOPIC = "Customer";
     final String REKEYED_CUSTOMER_TOPIC = "RekeyedCustomer";
@@ -26,6 +28,8 @@ public class ThreeRiversDemo {
 
     final String bootstrapServers = "localhost:9092";
     final String schemaRegistryUrl = "http://localhost:8081";
+
+    private KafkaStreams streams;
 
     public Properties buildStreamsProperties() {
         Properties props = new Properties();
@@ -78,29 +82,21 @@ public class ThreeRiversDemo {
         return customerBalanceAvroSerde;
     }
 
-    public static void main(String[] args) {
-        ThreeRiversDemo demo = new ThreeRiversDemo();
+    public void start() {
+        ThreeRiversDemoKTable demo = new ThreeRiversDemoKTable();
         Properties streamProps = demo.buildStreamsProperties();
         Topology topology = demo.buildTopology();
 
-        final KafkaStreams streams = new KafkaStreams(topology, streamProps);
+        streams = new KafkaStreams(topology, streamProps);
         final CountDownLatch latch = new CountDownLatch(1);
 
         // Attach shutdown handler to catch Control-C.
-        Runtime.getRuntime().addShutdownHook(new Thread("streams-shutdown-hook") {
-            @Override
-            public void run() {
-                streams.close();
-                latch.countDown();
-            }
-        });
+        Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
 
-        try {
-            streams.start();
-            latch.await();
-        } catch (Throwable e) {
-            System.exit(1);
-        }
-        System.exit(0);
+        streams.start();
+    }
+
+    public void stop() {
+        streams.close();
     }
 }

@@ -1,4 +1,4 @@
-package com.ibm.gbs.threerivers;
+package com.ibm.gbs.threerivers.kafka;
 
 import com.ibm.gbs.schema.Customer;
 import com.ibm.gbs.schema.CustomerBalance;
@@ -9,6 +9,7 @@ import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.*;
 import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.state.KeyValueStore;
+import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -16,7 +17,8 @@ import java.util.Properties;
 
 import static io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG;
 
-public class ThreeRiversDemoG {
+@Service
+public class ThreeRiversDemoGlobalKTable {
 
     final String CUSTOMER_TOPIC = "Customer";
     final String REKEYED_CUSTOMER_TOPIC = "RekeyedCustomer";
@@ -28,6 +30,8 @@ public class ThreeRiversDemoG {
 
     final String bootstrapServers = "localhost:9092";
     final String schemaRegistryUrl = "http://localhost:8081";
+
+    private KafkaStreams streams;
 
     public Properties buildStreamsProperties() {
         Properties props = new Properties();
@@ -91,15 +95,19 @@ public class ThreeRiversDemoG {
         return customerAvroSerde;
     }
 
-    public static void main(String[] args) {
-        ThreeRiversDemoG demo = new ThreeRiversDemoG();
+    public void start() {
+        ThreeRiversDemoGlobalKTable demo = new ThreeRiversDemoGlobalKTable();
         Properties streamProps = demo.buildStreamsProperties();
         Topology topology = demo.buildTopology();
 
-        final KafkaStreams streams = new KafkaStreams(topology, streamProps);
+        streams = new KafkaStreams(topology, streamProps);
 
         Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
 
         streams.start();
+    }
+
+    public void stop() {
+        streams.close();
     }
 }
